@@ -10,6 +10,7 @@
 # 5 - Resolvendo problemas de sobrepoição ao juntar os rasters.
 # 6 - Criando uma lista com todos os arquivos rasters
 # 7 - Lendo todos os raster de uma só vez.
+# 8 - Recortar o raster unido com o shape do Estado do Rio de Janeiro
 
 
 
@@ -62,9 +63,60 @@ lista_rasters
 
 
 # Lendo os arquivos usando a função lapply(list, function) e do.call(function, dataset)
-rm(raters_listados)
+
 rasters_listados <- lapply(lista_rasters, raster)
 
 rasters_unidos <- do.call(merge, rasters_listados)
 plot(rasters_unidos)
 
+# Agora vamos fazer o recorte do tif rasters_unidos com o poligono que 
+# representa os limites territoriais do Estado do Rio de Janeiro.
+# Para isso vamos carregar o pacote geobr 
+# Para conferir o sistema de coordenada podemos usar a função crs do pacote raster
+# ou a st_crs do pacote sf
+
+library(geobr)
+plot(rasters_unidos)
+rj_estado = read_state(code_state = 'RJ')
+plot(rj_estado$geom, add=TRUE)
+
+# Recortando o raster. Primeiro vamos conferir o sistema de coordenadas 
+# tanto do raster quanto do limite territorial.
+
+
+#Conferindo o sistema de coordenadas
+library(sf)
+crs(rasters_unidos)
+st_crs(rj_estado)$proj4string
+
+# Agora sabemos que o raster está em WGS84 e poligono em SIRGAS 2000. Vamos
+# colocar o poligono em WGS84. O pacote magrittr vai permitir usar o operador pipe %>% 
+
+library(magrittr)
+rj_estado_wgs = read_state(code_state = 'RJ') %>% 
+                st_transform(crs = '+proj=longlat +datum=WGS84 +no_defs')
+
+
+relevo <- crop(rasters_unidos, rj_estado_wgs)
+plot(relevo)
+plot(rj_estado_wgs$geom, add=T)
+
+
+#Agora vamos criar uma mascara para capturar o conteudo que esta dentro do limite 
+# territorial do Estado do Rio de Janeiro
+relevo_rj = mask(relevo, rj_estado_wgs)
+plot(relevo_rj)
+plot(rj_estado_wgs$geom, add=T)
+
+# Da mesma forma podemos capturar os dados com o conteudo que esta fora do limite
+# territorial do Estado do Rio de Janeiro
+
+relevo_out_rj = mask(relevo, rj_estado_wgs, inverse=T)
+plot(relevo_out_rj)
+plot(rj_estado_wgs$geom, add= T)
+
+# Salvando o Raster
+
+writeRaster(x= relevo_rj, filename = 'relevo_estado_rio_de_janeiro.tif', 
+            overwrite = T)
+arquivo = raster()
