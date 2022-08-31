@@ -16,7 +16,7 @@
 
 # Setando o diretório
 
-setwd('C:/Users/rodolfo.paula/Documents/MeusProjetos/Dados_espaciais_R/datasets/relevo_rj')
+setwd('C:/Users/file_path')
 
 # Carregar o pacote raster
 
